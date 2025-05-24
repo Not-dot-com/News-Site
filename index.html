@@ -11,7 +11,7 @@
             <form action="/search" method="GET">
                 <input autofocus class="search-input" value="{{ .SearchKey }}" placeholder="Enter a news topic" type="search" name="q">
             </form>
-            <a href="https://github.com/Not-dot-com/News-Site>" class="button github-button">View on Github</a>
+            <a href="https://github.com/Not-dot-com/News-Site.git" target="_blank" rel="noopener noreferrer" class="button github-button">View on Github</a>
         </header>
 
         <section class="container">
@@ -25,13 +25,13 @@
 
             <ul class="search-results">
                 <div class="pagination">
-                    {{ if .HasPreviousPage }}
-                        <a href="/search?q={{.SearchKey}}&page={{.PreviousPage}}" class="button previous-page">Previous</a>
-                    {{ end }}
-                    {{ if .HasNextPage }}
-                        <a href="/search?q={{.SearchKey}}&page={{.NextPage}}" class="button next-page">Next</a>
-                    {{ end }}
-                </div>
+                     {{ if gt .PreviousPage 0 }}
+                         <a href="/search?q={{.SearchKey}}&page={{.PreviousPage}}" class="button previous-page">Previous</a>
+                     {{ end }}
+                     {{ if gt .NextPage 0 }}
+                         <a href="/search?q={{.SearchKey}}&page={{.NextPage}}" class="button next-page">Next</a>
+                     {{ end }}
+                        </div>
 
                 {{ range .Results.Articles }}
                     <li class="news-article">

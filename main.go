@@ -17,7 +17,7 @@ import (
 	"github.com/joho/godotenv" // Импортируем godotenv
 )
 
-var tpl = template.Must(template.ParseFiles("index.html"))
+var tpl *template.Template // Изменили тип на *template.Template и убрали Must
 
 var apiKey *string
 
@@ -73,9 +73,21 @@ type Results struct {
 }
 
 func indexHandler(w http.ResponseWriter, r *http.Request) {
-	err := tpl.Execute(w, nil)
+	log.Println("indexHandler called")
+
+	// Создаем структуру Search с пустыми значениями
+	search := Search{
+		SearchKey:    "",        // Пустой поисковый запрос
+		CurrentPage:  1,         // Первая страница
+		TotalPages:   0,         // Нет результатов (пока)
+		PreviousPage: 0,         // Нет предыдущей страницы
+		NextPage:     0,         // Нет следующей страницы
+		Results:      Results{}, // Пустые результаты
+	}
+
+	err := tpl.Execute(w, search) // Передаем структуру Search в шаблон
 	if err != nil {
-		log.Printf("Error executing template: %v", err) // Added logging
+		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}
 }
@@ -84,7 +96,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse URL and get parameters
 	u, err := url.Parse(r.URL.String())
 	if err != nil {
-		log.Printf("Error parsing URL: %v", err) // Added logging
+		log.Printf("Error parsing URL: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -115,7 +127,7 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 	// Call NewsAPI
 	results, err := getNews(searchKey, pageSize, page)
 	if err != nil {
-		log.Printf("Error getting news: %v", err) // Added logging
+		log.Printf("Error getting news: %v", err)
 		http.Error(w, "Failed to get news", http.StatusInternalServerError)
 		return
 	}
@@ -130,24 +142,31 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 		totalPages = int(math.Ceil(float64(results.TotalResults) / float64(pageSize)))
 	}
 
+	search.TotalPages = totalPages // Переместите эту строку сюда!
+
 	if search.CurrentPage > 1 {
 		search.PreviousPage = search.CurrentPage - 1
 	} else {
-		search.PreviousPage = 1 // Или 0, в зависимости от вашей логики
+		search.PreviousPage = 0 // Нет предыдущей страницы
 	}
 
 	if search.CurrentPage < search.TotalPages {
 		search.NextPage = search.CurrentPage + 1
 	} else {
-		search.NextPage = search.TotalPages
+		search.NextPage = 0 // Нет следующей страницы
 	}
 
-	search.TotalPages = totalPages
-
+	log.Printf("SearchKey: %s", search.SearchKey)
+	log.Printf("CurrentPage: %d", search.CurrentPage)
+	log.Printf("TotalPages: %d", search.TotalPages)
+	log.Printf("NextPage: %d", search.NextPage)
+	log.Printf("HasNextPage: %t", search.HasNextPage())
+	log.Printf("PreviousPage: %d", search.PreviousPage)
+	log.Printf("HasPreviousPage: %t", search.HasPreviousPage())
 	log.Printf("search.Results.TotalResults = %v (type %T)", search.Results.TotalResults, search.Results.TotalResults) // Логирование для проверки
 	err = tpl.Execute(w, search)
 	if err != nil {
-		log.Printf("Error executing template: %v", err) // Added logging
+		log.Printf("Error executing template: %v", err)
 		http.Error(w, "Failed to render template", http.StatusInternalServerError)
 	}
 }
@@ -200,6 +219,12 @@ func main() {
 	}
 
 	log.Printf("Using API key: %s (last 4 digits)", apiKeyHash(*apiKey)) // Добавил вывод для API key
+
+	// Загрузка и парсинг шаблона (теперь с проверкой на ошибки)
+	tpl, err = template.ParseFiles("index.html")
+	if err != nil {
+		log.Fatalf("Error parsing template: %v", err) // Fatal error: приложение не может работать без шаблона
+	}
 
 	mux := http.NewServeMux()
 
